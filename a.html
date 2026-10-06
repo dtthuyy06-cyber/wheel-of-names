@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wheel of Names</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 15px;
+    }
+    h1 { color: #1a73e8; margin-top: 10px; margin-bottom: 15px; font-size: 24px; }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .wheel-box {
+      position: relative;
+      width: 320px;
+      height: 320px;
+    }
+    #wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: transform 4s cubic-bezier(0.15, 0.99, 0.18, 1);
+    }
+    .pointer {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 25px solid #d32f2f;
+      z-index: 10;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    .input-box {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #444;
+    }
+    textarea {
+      width: 260px;
+      height: 200px;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      outline: none;
+      line-height: 1.5;
+    }
+    textarea:focus { border-color: #1a73e8; }
+    button {
+      margin-top: 15px;
+      padding: 12px 35px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background-color: #1a73e8;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+    button:active { transform: scale(0.98); }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      min-width: 260px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Wheel of Names</h1>
+
+  <div class="container">
+    <div class="wheel-box">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="320" height="320"></canvas>
+    </div>
+    
+    <div class="input-box">
+      <label for="names">Danh sách tên (mỗi tên 1 dòng):</label>
+      <textarea id="names" oninput="drawWheel()">An
+Thuý
+Bảo
+Thư
+Cúc</textarea>
+    </div>
+  </div>
+
+  <button onclick="spin()">QUAY NGAY</button>
+
+  <div id="winnerModal" class="modal" onclick="this.style.display='none'">
+    <div class="modal-content">
+      Chúc mừng: <br><br>
+      <span id="wName" style="color: #d32f2f; font-size: 30px;"></span>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const colors = ['#e57373', '#ba68c8', '#64b5f6', '#4db6ac', '#81c784', '#ffd54f', '#ffb74d', '#a1887f'];
+    let currentRotation = 0;
+
+    function getNames() {
+      return document.getElementById('names').value
+        .split('\n')
+        .map(n => n.trim())
+        .filter(n => n !== '');
+    }
+
+    function drawWheel() {
+      const names = getNames();
+      ctx.clearRect(0, 0, 320, 320);
+
+      if (names.length === 0) return;
+
+      const arc = (2 * Math.PI) / names.length;
+
+      names.forEach((name, i) => {
+        const angle = i * arc;
+        ctx.beginPath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.moveTo(160, 160);
+        ctx.arc(160, 160, 160, angle, angle + arc);
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(160, 160);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 15px Arial";
+        ctx.fillText(name, 145, 5);
+        ctx.restore();
+      });
+    }
+
+    function isExcludedName(name) {
+      const text = name.toLowerCase();
+      // Loại trừ tên Thư/Thu hoặc Thuý/Thuy
+      return text === 'thư' || text === 'thu' || text === 'thuý' || text === 'thuy' || text.includes('thuý') || text.includes('thuy');
+    }
+
+    function spin() {
+      const names = getNames();
+      if (names.length === 0) return;
+
+      // Tìm danh sách các tên KHÔNG PHẢI là Thư và Thuý
+      const validIndices = [];
+      names.forEach((name, index) => {
+        if (!isExcludedName(name)) {
+          validIndices.push(index);
+        }
+      });
+
+      let targetIndex = -1;
+
+      // Nếu có tên hợp lệ (không phải Thư hay Thuý), chọn ngẫu nhiên trong danh sách đó
+      if (validIndices.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validIndices.length);
+        targetIndex = validIndices[randomIndex];
+      } 
+      // Nếu danh sách chỉ có đúng tên Thư/Thuý thì mới chọn ngẫu nhiên bình thường
+      else {
+        targetIndex = Math.floor(Math.random() * names.length);
+      }
+
+      const selectedName = names[targetIndex];
+      const numSlices = names.length;
+      const sliceAngle = 360 / numSlices;
+
+      // Tính góc quay đến ô được chọn
+      let desiredAngle = 360 - (targetIndex * sliceAngle + sliceAngle / 2) - 90;
+      let extraRounds = (5 + Math.floor(Math.random() * 3)) * 360;
+      currentRotation += extraRounds + (desiredAngle - (currentRotation % 360));
+
+      canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+      setTimeout(() => {
+        document.getElementById('wName').innerText = selectedName;
+        document.getElementById('winnerModal').style.display = 'flex';
+      }, 4000);
+    }
+
+    drawWheel();
+  </script>
+</body>
+</html>
